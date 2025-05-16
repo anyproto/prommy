@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+ <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+                    <!-- Circular Background -->
+                    <circle cx="50" cy="50" r="48" fill="#F8F8F8" stroke="#DDD" stroke-width="2"/>
+                  
+                    <!-- Matchstick handle -->
+                    <rect x="47" y="53" width="6" height="30" fill="#D89C6A" rx="3"/>
+                  
+                    <!-- Match head -->
+                    <circle cx="50" cy="50" r="6" fill="#3E3A39"/>
+                  
+                    <!-- Flame (larger and more visible) -->
+                    <path fill="#FF7E47" d="M50 20
+                      C42 30, 40 40, 50 50
+                      C60 40, 58 30, 50 20 Z"/>
+                  
+                    <!-- Inner flame highlight -->
+                    <path fill="#FFC36D" d="M50 27
+                      C45 33, 44 38, 50 45
+                      C56 38, 55 33, 50 27 Z"/>
+</svg>

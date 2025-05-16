@@ -1,0 +1,209 @@
+# Prommy
+
+Prommy is a lightweight Prometheus metrics dashboard with real-time WebSocket updates. It provides a simple way to visualize and monitor your application's metrics in a self-contained package.
+
+## Features
+
+- **Single-binary solution** — No external dependencies or separate Prometheus server required
+- **Real-time updates** via WebSockets — See metric changes as they happen
+- **Prometheus-compatible** — `/metrics` endpoint works just like the standard one
+- **Modern UI** — Clean interface with responsive design using Tailwind CSS
+- **Fully customizable** — Adjust refresh interval, filter metrics, and more
+- **Zero configuration** — Works out of the box with sensible defaults
+- **Secure** — Optional basic authentication support
+
+## Installation
+
+```bash
+go get github.com/anyproto/prommy
+```
+
+## Quick Start
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/anyproto/prommy"
+)
+
+func main() {
+    // Start server with default config
+    if err := prommy.Serve(":8080"); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+Then open http://localhost:8080/ in your browser to see the dashboard.
+
+## Configuration Options
+
+Prommy uses a functional options pattern for configuration:
+
+```go
+// Use a custom Prometheus registry
+registry := prometheus.NewRegistry()
+prommy.Serve(":8080", prommy.WithRegistry(registry))
+
+// Change the refresh interval
+prommy.Serve(":8080", prommy.WithTickerInterval(2 * time.Second))
+
+// Enable basic authentication
+prommy.Serve(":8080", prommy.WithBasicAuth("admin", "secret"))
+
+// Set up a custom dashboard layout
+prommy.Serve(":8080", 
+    prommy.WithDashboardStrings([][]string{
+        {"go_memstats_heap_alloc_bytes", "go_goroutines"},
+        {"myapp_errors_total"},
+    }),
+    prommy.WithDashboard([][]interface{}{
+        {
+            map[string]string{"name": "go_memstats_heap_alloc_bytes", "short": "HEAP"},
+            map[string]string{"name": "go_goroutines", "short": "GOROUTINES"},
+        },
+        {
+            map[string]string{"name": "myapp_errors_total", "short": "ERRORS"},
+        },
+    }),
+    prommy.WithDashboardJSON(`[
+        [
+            {"name": "go_memstats_heap_alloc_bytes", "short": "HEAP"}, 
+            {"name": "go_goroutines", "short": "GOROUTINES"}
+        ],
+        [
+            {"name": "myapp_errors_total", "short": "ERRORS"}
+        ]
+    ]`),
+)
+
+// Combine multiple options
+prommy.Serve(":8080", 
+    prommy.WithRegistry(registry),
+    prommy.WithTickerInterval(2 * time.Second),
+    prommy.WithBasicAuth("admin", "secret"),
+    prommy.WithDashboard([][]string{
+        {"go_goroutines", "process_cpu_seconds_total"},
+        {"myapp_request_duration_seconds_sum"},
+    }),
+)
+```
+
+### Available Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `WithRegistry` | Use a custom Prometheus registry | New registry with Go collectors |
+| `WithTickerInterval` | Set refresh frequency for metrics | 1 second |
+| `WithStaticFS` | Provide custom static files | Embedded dashboard |
+| `WithBasicAuth` | Enable HTTP basic authentication | No auth |
+| `WithDashboard` | Set custom dashboard layout as 2D grid | One metric per row |
+| `WithDashboardStrings` | Set custom dashboard layout as 2D grid with just metric names | One metric per row |
+| `WithDashboardJSON` | Set custom dashboard layout as JSON string | One metric per row |
+
+## Environment Variables
+
+Prommy respects the following environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PROMMY_BASIC_AUTH_USER` | Basic auth username | "" (disabled) |
+| `PROMMY_BASIC_AUTH_PASS` | Basic auth password | "" (disabled) |
+| `PROMMY_INTERVAL` | Refresh interval in milliseconds | 1000 |
+| `PROMMY_DASHBOARD` | JSON array of arrays for dashboard layout | `[]` |
+
+## Docker Usage
+
+```dockerfile
+FROM golang:1.22-alpine AS builder
+WORKDIR /app
+COPY . .
+RUN go build -o prommy-example ./examples/demo
+
+FROM alpine:latest
+WORKDIR /app
+COPY --from=builder /app/prommy-example .
+EXPOSE 8080
+CMD ["./prommy-example"]
+```
+
+Run with:
+
+```bash
+docker build -t prommy-example .
+docker run -p 8080:8080 prommy-example
+```
+
+## Screenshots
+
+![Prommy Dashboard](https://via.placeholder.com/800x450.png?text=Prommy+Dashboard)
+
+![Metrics Filter](https://via.placeholder.com/800x450.png?text=Metrics+Filter)
+
+## License
+
+MIT
+
+## Author
+
+Prommy is created and maintained by the AnyType team. 
+
+## Dashboard Features
+
+Prommy offers two views:
+
+1. **Table View** - A traditional table displaying all metrics and their details
+2. **Grid View** - A compact 300px × 300px grid dashboard with large value tiles
+
+The grid layout can be customized using the `WithDashboard` option or the `PROMMY_DASHBOARD` environment variable:
+
+```go
+// Legacy dashboard layout with just metric names
+prommy.WithDashboardStrings([][]string{
+    {"go_goroutines", "go_memstats_heap_alloc_bytes"}, // First row with two metrics
+    {"http_requests_total"}, // Second row with one metric
+})
+
+// Enhanced format with custom short labels
+prommy.WithDashboard([][]interface{}{
+    {
+        map[string]string{"name": "go_goroutines", "short": "ROUTINES"},
+        map[string]string{"name": "go_memstats_heap_alloc_bytes", "short": "MEMORY"},
+    },
+    {
+        map[string]string{"name": "http_requests_total", "short": "REQUESTS"},
+    },
+})
+
+// JSON string format (most convenient for inline configuration)
+prommy.WithDashboardJSON(`[
+    [
+        {"name": "go_goroutines", "short": "ROUTINES"},
+        {"name": "go_memstats_heap_alloc_bytes", "short": "MEMORY"}
+    ],
+    [
+        {"name": "http_requests_total", "short": "REQUESTS"}
+    ]
+]`)
+```
+
+You can also use the environment variable:
+
+```bash
+# Legacy format
+export PROMMY_DASHBOARD='[["go_goroutines", "go_memstats_heap_alloc_bytes"], ["http_requests_total"]]'
+
+# Enhanced format with custom short labels
+export PROMMY_DASHBOARD='[[{"name":"go_goroutines","short":"ROUTINES"},{"name":"go_memstats_heap_alloc_bytes","short":"MEMORY"}],[{"name":"http_requests_total","short":"REQUESTS"}]]'
+```
+
+Each tile in the grid displays:
+- The metric value in large font
+- A short label (derived from the metric name or custom "short" field)
+- The full metric name on hover
+
+The dashboard is accessible via:
+- Toggle button in the UI to switch between views
+- REST endpoint at `GET /dashboard` that returns the current layout as JSON 
