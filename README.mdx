@@ -142,14 +142,6 @@ docker run -p 8080:8080 prommy-example
 
 ![Metrics Filter](https://via.placeholder.com/800x450.png?text=Metrics+Filter)
 
-## License
-
-MIT
-
-## Author
-
-Prommy is created and maintained by the AnyType team. 
-
 ## Dashboard Features
 
 Prommy offers two views:
@@ -207,3 +199,45 @@ Each tile in the grid displays:
 The dashboard is accessible via:
 - Toggle button in the UI to switch between views
 - REST endpoint at `GET /dashboard` that returns the current layout as JSON 
+
+## Performance Optimizations
+
+### Embedded Tailwind CSS
+
+Prommy can be built with an embedded version of Tailwind CSS to improve performance, especially in environments with limited or no internet access.
+
+To build with embedded Tailwind CSS, use the `embedcss` build tag:
+
+```bash
+go build -tags embedcss
+```
+
+Benefits of using embedded CSS:
+- **Improved performance**: Eliminates external network requests
+- **Offline capability**: Works without internet access
+- **Reduced dependencies**: No reliance on external CDN availability
+
+Without this build tag, Prommy will automatically redirect CSS requests to the Tailwind CDN. The embedded version is served with gzip compression for supported browsers, further improving load times.
+
+If you're using Docker, you can add the build tag to your Dockerfile:
+
+```dockerfile
+FROM golang:1.22-alpine AS builder
+WORKDIR /app
+COPY . .
+RUN go build -tags embedcss -o prommy-example ./examples/demo
+
+FROM alpine:latest
+WORKDIR /app
+COPY --from=builder /app/prommy-example .
+EXPOSE 8080
+CMD ["./prommy-example"]
+```
+
+## License
+
+MIT
+
+## Author
+
+Prommy is created and maintained by the AnyType team. 

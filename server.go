@@ -3,6 +3,7 @@ package prommy
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net/http"
@@ -163,6 +164,56 @@ func (s *Server) setupRoutes(staticFS fs.FS) {
 		// Marshal and send the dashboard layout
 		if err := json.NewEncoder(w).Encode(dashboard); err != nil {
 			http.Error(w, "Error encoding dashboard", http.StatusInternalServerError)
+		}
+	})
+
+	// Handle tailwind.css file
+	s.mux.HandleFunc(prefix+"/tailwind.css", func(w http.ResponseWriter, r *http.Request) {
+		// Check if Tailwind CSS is embedded in this build
+		if IsTailwindEmbedded() {
+			// Serve the embedded gzipped file
+			tailwindFS := GetTailwindFS()
+
+			// Check if client accepts gzip encoding
+			if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+				// Serve the gzipped file with appropriate headers
+				w.Header().Set("Content-Encoding", "gzip")
+				w.Header().Set("Content-Type", "text/css")
+				w.Header().Set("Vary", "Accept-Encoding")
+
+				// Open and serve the gzipped file
+				file, err := tailwindFS.Open("static/tailwind.css.gz")
+				if err != nil {
+					// If something went wrong with embedded file, redirect to CDN
+					log.Printf("Error opening embedded tailwind.css.gz: %v", err)
+					http.Redirect(w, r, "https://cdn.tailwindcss.com", http.StatusTemporaryRedirect)
+					return
+				}
+				defer file.Close()
+
+				// Read the file and send it to the client
+				stat, err := file.Stat()
+				if err != nil {
+					// If something went wrong, redirect to CDN
+					log.Printf("Error reading embedded tailwind.css.gz stats: %v", err)
+					http.Redirect(w, r, "https://cdn.tailwindcss.com", http.StatusTemporaryRedirect)
+					return
+				}
+
+				w.Header().Set("Content-Length", fmt.Sprintf("%d", stat.Size()))
+				w.WriteHeader(http.StatusOK)
+				io.Copy(w, file)
+				return
+			} else {
+				// For clients that don't support gzip, redirect to CDN
+				// This is simpler than decompressing on the fly
+				http.Redirect(w, r, "https://cdn.tailwindcss.com", http.StatusTemporaryRedirect)
+				return
+			}
+		} else {
+			// Tailwind CSS is not embedded in this build, redirect to CDN
+			http.Redirect(w, r, "https://cdn.tailwindcss.com", http.StatusTemporaryRedirect)
+			return
 		}
 	})
 
