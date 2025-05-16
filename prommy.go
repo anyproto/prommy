@@ -132,14 +132,6 @@ func Handler(opts ...Option) http.HandlerFunc {
 	// Check environment variables for configuration
 	applyEnvConfig(cfg)
 
-	// Register default collectors if using the default registry
-	if cfg.Registry == prometheus.DefaultRegisterer {
-		cfg.Registry.MustRegister(
-			prometheus.NewGoCollector(),
-			prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}),
-		)
-	}
-
 	// Initialize the server
 	server, err := newServer(cfg)
 	if err != nil {
@@ -158,7 +150,7 @@ func Handler(opts ...Option) http.HandlerFunc {
 func Serve(addr string, opts ...Option) error {
 	// Create default config
 	cfg := &Config{
-		Registry:       prometheus.NewRegistry(),
+		Registry:       prometheus.DefaultRegisterer.(*prometheus.Registry),
 		TickerInterval: time.Second,
 	}
 
@@ -169,14 +161,6 @@ func Serve(addr string, opts ...Option) error {
 
 	// Check environment variables for configuration
 	applyEnvConfig(cfg)
-
-	// Register default collectors if using the default registry
-	if cfg.Registry == prometheus.DefaultRegisterer {
-		cfg.Registry.MustRegister(
-			prometheus.NewGoCollector(),
-			prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}),
-		)
-	}
 
 	// Initialize the server
 	server, err := newServer(cfg)
